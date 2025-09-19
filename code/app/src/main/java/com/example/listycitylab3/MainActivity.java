@@ -1,36 +1,101 @@
 package com.example.listycitylab3;
 
 import android.os.Bundle;
-import android.widget.ArrayAdapter;
+import android.view.View;
+import android.widget.EditText;
 import android.widget.ListView;
+import android.widget.Toast;
 
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 
+import com.google.android.material.floatingactionbutton.FloatingActionButton;
+
 import java.util.ArrayList;
-import java.util.Arrays;
 
-public class MainActivity extends AppCompatActivity {
+public class MainActivity extends AppCompatActivity implements AddCityFragment.AddCityDialogListener {
 
-    private ArrayList<String> dataList;
+    private ArrayList<City> dataList;
     private ListView cityList;
-    private ArrayAdapter<String> cityAdapter;
+    private CityArrayAdapter cityAdapter;
+
+    @Override
+    public void addCity(City city) {
+        cityAdapter.add(city);
+        cityAdapter.notifyDataSetChanged();
+    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        String[] cities = {
-                "Edmonton", "Vancouver", "Moscow",
-                "Sydney", "Berlin", "Vienna",
-                "Tokyo", "Beijing", "Osaka", "New Delhi"
-        };
+        String[] cities = {"Edmonton", "Vancouver", "Toronto"};
+        String[] provinces = {"AB", "BC", "ON"};
 
         dataList = new ArrayList<>();
-        dataList.addAll(Arrays.asList(cities));
-        
+        for (int i = 0; i < cities.length; i++) {
+            dataList.add(new City(cities[i], provinces[i]));
+        }
+
         cityList = findViewById(R.id.city_list);
-        cityAdapter = new ArrayAdapter<>(this, R.layout.content, dataList);
+        cityAdapter = new CityArrayAdapter(this, dataList);
         cityList.setAdapter(cityAdapter);
+
+        cityList.setOnItemClickListener((parent, view, position, id) -> {
+            City selected = cityAdapter.getItem(position);
+            if (selected != null) {
+                showCityDialog(selected, position);
+            }
+        });
+
+        FloatingActionButton fab = findViewById(R.id.button_add_city);
+        fab.setOnClickListener(v -> new AddCityFragment().show(getSupportFragmentManager(), "Add City"));
+    }
+
+
+    private void showCityDialog(City city, int position) {
+        new AlertDialog.Builder(this)
+                .setTitle(city.getName())
+                .setMessage(city.getProvince())
+                .setPositiveButton("Edit", (dialog, which) -> showEditCityDialog(city, position))
+                .setNegativeButton("Close", null)
+                .show();
+    }
+
+
+    private void showEditCityDialog(City city, int position) {
+        View view = getLayoutInflater().inflate(R.layout.fragment_add_city, null);
+        EditText editCityName = view.findViewById(R.id.edit_text_city_text);
+        EditText editProvinceName = view.findViewById(R.id.edit_text_province_text);
+
+
+        editCityName.setText(city.getName());
+        editProvinceName.setText(city.getProvince());
+
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setTitle("Edit City")
+                .setView(view)
+                .setNegativeButton("Cancel", null)
+                .setPositiveButton("Save", null);
+
+        AlertDialog dialog = builder.create();
+        dialog.show();
+
+        dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
+            String newCityName = editCityName.getText().toString().trim();
+            String newProvince = editProvinceName.getText().toString().trim();
+
+            if (newCityName.isEmpty() || newProvince.isEmpty()) {
+                Toast.makeText(this, "Both fields are required", Toast.LENGTH_SHORT).show();
+                return;
+            }
+
+            city.setName(newCityName);
+            city.setProvince(newProvince);
+            cityAdapter.notifyDataSetChanged();
+
+            dialog.dismiss();
+        });
     }
 }
